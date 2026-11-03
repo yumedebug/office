@@ -1,0 +1,57 @@
+name: Build Windows setup.exe
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build setup.exe
+        shell: cmd
+        run: packaging\build.bat
+
+      - name: Verify setup.exe
+        shell: pwsh
+        run: |
+          $path = "packaging/output/AI-Office-Workspace-Setup.exe"
+          if (-not (Test-Path $path)) { throw "setup.exe was not created: $path" }
+          $item = Get-Item $path
+          if ($item.Length -lt 1MB) { throw "setup.exe is unexpectedly small" }
+          Get-FileHash $path -Algorithm SHA256
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AI-Office-Workspace-Setup
+          path: packaging/output/AI-Office-Workspace-Setup.exe
+          if-no-files-found: error
+
+      - name: Publish GitHub release asset
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: packaging/output/AI-Office-Workspace-Setup.exe

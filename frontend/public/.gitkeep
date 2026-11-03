@@ -1,0 +1,2 @@
+# qtwebchannel.js は main.py が Qt の内蔵リソースから書き出します。
+# このディレクトリは Vite の public ディレクトリです（ビルド時に dist へコピーされます）。

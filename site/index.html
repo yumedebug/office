@@ -1,0 +1,758 @@
+<!doctype html>
+<!--
+  AI Office Workspace - 配布サイト用ページ（この 1 ファイルで完結）
+
+  ダウンロードボタンは GitHub Releases の setup.exe を指しています
+  （https://github.com/yumedebug/office/releases）。
+  Cloudflare Pages は 1 ファイル 25 MiB までなので、数百 MB の setup.exe は
+  このページと同じ場所には置けません（別ホストから配信しています）。
+  外部 CSS / JS / フォントは読み込みません。
+-->
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <title>AI Office Workspace — ダウンロード</title>
+    <meta
+      name="description"
+      content="ChatGPT / GLM / DeepSeek / Qwen と Excel・Word・Slide 風エディタを1画面にまとめた Windows アプリ。setup.exe でインストールして使います。"
+    />
+    <link rel="icon" href="data:," />
+    <style>
+      :root {
+        --bg: #111318;
+        --sub: #1b1e25;
+        --panel: #20242c;
+        --border: #343943;
+        --text: #f2f3f5;
+        --muted: #a0a6b2;
+        --accent: #5b8def;
+        --accent-strong: #6f9bf3;
+        --ok: #6fcf97;
+        --warn: #f2c94c;
+        --radius: 12px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background:
+          radial-gradient(1100px 520px at 50% -220px, #1d2740 0%, transparent 70%),
+          var(--bg);
+        color: var(--text);
+        font-family: "Segoe UI", "Yu Gothic UI", "Meiryo", -apple-system,
+          BlinkMacSystemFont, sans-serif;
+        font-size: 16px;
+        line-height: 1.75;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      a {
+        color: var(--accent-strong);
+        text-decoration: none;
+      }
+
+      a:hover {
+        text-decoration: underline;
+      }
+
+      .wrap {
+        width: 100%;
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+
+      /* ---- header ---- */
+      .site-header {
+        border-bottom: 1px solid var(--border);
+        background: rgba(17, 19, 24, 0.82);
+        backdrop-filter: blur(8px);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+
+      .site-header .wrap {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        min-height: 64px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--text);
+        font-weight: 700;
+        letter-spacing: 0.01em;
+      }
+
+      .brand:hover {
+        text-decoration: none;
+      }
+
+      .brand-mark {
+        width: 28px;
+        height: 28px;
+        flex: none;
+      }
+
+      .site-nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        font-size: 14px;
+      }
+
+      .site-nav a {
+        color: var(--muted);
+      }
+
+      .site-nav a:hover {
+        color: var(--text);
+        text-decoration: none;
+      }
+
+      /* ---- hero ---- */
+      .hero {
+        padding: 72px 0 56px;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 12px;
+        border: 1px solid #2f4370;
+        background: #223052;
+        border-radius: 999px;
+        color: #b9cdf7;
+        font-size: 13px;
+      }
+
+      .hero h1 {
+        margin: 20px 0 14px;
+        font-size: clamp(30px, 5vw, 46px);
+        line-height: 1.24;
+        letter-spacing: 0.01em;
+      }
+
+      .hero h1 span {
+        color: var(--accent-strong);
+      }
+
+      .lede {
+        margin: 0;
+        max-width: 660px;
+        color: var(--muted);
+        font-size: 17px;
+      }
+
+      /* ---- download card ---- */
+      .download-card {
+        margin-top: 36px;
+        padding: 28px;
+        background: linear-gradient(180deg, #232936 0%, var(--panel) 100%);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 24px;
+        justify-content: space-between;
+      }
+
+      .download-card h2 {
+        margin: 0 0 6px;
+        font-size: 20px;
+      }
+
+      .download-meta {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 15px 26px;
+        border-radius: 10px;
+        background: var(--accent);
+        color: #fff;
+        font-size: 16px;
+        font-weight: 700;
+        border: 1px solid var(--accent);
+        white-space: nowrap;
+      }
+
+      .btn:hover {
+        background: var(--accent-strong);
+        border-color: var(--accent-strong);
+        text-decoration: none;
+      }
+
+      .btn svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      .only-note {
+        margin: 18px 0 0;
+        padding: 12px 16px;
+        border-left: 3px solid var(--accent);
+        background: #1a2233;
+        border-radius: 0 8px 8px 0;
+        color: #c6cedd;
+        font-size: 14px;
+      }
+
+      /* ---- sections ---- */
+      section {
+        padding: 56px 0;
+        border-top: 1px solid var(--border);
+      }
+
+      .section-title {
+        margin: 0 0 8px;
+        font-size: 24px;
+      }
+
+      .section-note {
+        margin: 0 0 28px;
+        color: var(--muted);
+        font-size: 15px;
+      }
+
+      /* ---- features ---- */
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 16px;
+      }
+
+      .card {
+        padding: 22px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+      }
+
+      .card h3 {
+        margin: 0 0 8px;
+        font-size: 16px;
+      }
+
+      .card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.7;
+      }
+
+      .icon {
+        width: 34px;
+        height: 34px;
+        display: grid;
+        place-items: center;
+        margin-bottom: 14px;
+        border-radius: 9px;
+        background: #223052;
+        color: #b9cdf7;
+        font-size: 17px;
+      }
+
+      /* ---- steps ---- */
+      .steps {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        counter-reset: step;
+        display: grid;
+        gap: 14px;
+      }
+
+      .steps li {
+        position: relative;
+        padding: 18px 20px 18px 62px;
+        background: var(--sub);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+      }
+
+      .steps li::before {
+        counter-increment: step;
+        content: counter(step);
+        position: absolute;
+        left: 20px;
+        top: 18px;
+        width: 28px;
+        height: 28px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--accent);
+        color: #fff;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .steps h3 {
+        margin: 0 0 4px;
+        font-size: 16px;
+      }
+
+      .steps p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      kbd {
+        padding: 1px 7px;
+        border: 1px solid var(--border);
+        border-bottom-width: 2px;
+        border-radius: 5px;
+        background: var(--panel);
+        color: var(--text);
+        font-family: inherit;
+        font-size: 13px;
+      }
+
+      /* ---- tables ---- */
+      .table-scroll {
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+
+      th,
+      td {
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--border);
+        text-align: left;
+        vertical-align: top;
+      }
+
+      thead th {
+        color: var(--muted);
+        font-weight: 600;
+        background: var(--sub);
+        white-space: nowrap;
+      }
+
+      tbody td:first-child {
+        white-space: nowrap;
+        color: var(--text);
+      }
+
+      tbody td:last-child {
+        color: var(--muted);
+      }
+
+      code {
+        padding: 1px 6px;
+        background: #262b35;
+        border-radius: 5px;
+        font-family: "Cascadia Mono", Consolas, monospace;
+        font-size: 13px;
+        word-break: break-all;
+      }
+
+      /* ---- notice ---- */
+      .notice {
+        display: flex;
+        gap: 14px;
+        padding: 18px 20px;
+        background: #2a2416;
+        border: 1px solid #5a4a24;
+        border-radius: var(--radius);
+      }
+
+      .notice svg {
+        width: 20px;
+        height: 20px;
+        flex: none;
+        margin-top: 3px;
+        color: var(--warn);
+      }
+
+      .notice p {
+        margin: 0;
+        color: #e6d8ae;
+        font-size: 14px;
+      }
+
+      .notice strong {
+        color: #fff;
+      }
+
+      /* ---- footer ---- */
+      .site-footer {
+        padding: 32px 0 48px;
+        border-top: 1px solid var(--border);
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .site-footer .wrap {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 24px;
+        justify-content: space-between;
+      }
+
+      @media (max-width: 640px) {
+        .hero {
+          padding: 48px 0 40px;
+        }
+
+        .download-card {
+          padding: 22px;
+        }
+
+        .btn {
+          width: 100%;
+          justify-content: center;
+        }
+
+        .site-nav {
+          gap: 14px;
+          font-size: 13px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrap">
+        <a class="brand" href="./">
+          <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="1.5" y="3.5" width="21" height="17" rx="3.5" fill="#223052" stroke="#5b8def" stroke-width="1.6" />
+            <path d="M5 15.5l3.4-6.2 3.1 4.1 2.2-3.2L19 15.5" fill="none" stroke="#6f9bf3" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+            <circle cx="17.4" cy="8.2" r="1.3" fill="#6f9bf3" />
+          </svg>
+          <span>AI Office Workspace</span>
+        </a>
+        <nav class="site-nav" aria-label="ページ内リンク">
+          <a href="#features">機能</a>
+          <a href="#install">インストール</a>
+          <a href="#requirements">動作環境</a>
+          <a href="#notes">注意事項</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <!-- hero -->
+      <div class="hero">
+        <div class="wrap">
+          <span class="badge">Windows 10 / 11（64-bit）向け</span>
+          <h1>AI の回答を、<span>そのまま資料に。</span></h1>
+          <p class="lede">
+            ChatGPT・Claude・DeepSeek・Qwen の公式サイトと、Excel / Word / Slide 風のエディタを
+            1 つのウィンドウに。AI が作った回答や表を、コピーせずにその場で表計算・文書・
+            スライドへ変換して編集できます。API キーは不要です。
+          </p>
+
+          <div class="download-card">
+            <div>
+              <h2>AI Office Workspace をインストール</h2>
+              <!-- バージョン表記を変えるときは次の 1 行だけ書き換えてください -->
+              <p class="download-meta">
+                バージョン 1.0.1 ／ setup.exe（約 230 MB）／ 管理者権限は不要です
+              </p>
+            </div>
+            <!--
+              配布物は GitHub Releases に置いています。バージョンを上げたらタグ名
+              （/v1.0.1/ の部分）も書き換えてください。
+            -->
+            <a class="btn" href="https://github.com/yumedebug/office/releases/download/v1.0.1/AI-Office-Workspace-Setup.exe">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 3v12" />
+                <path d="M7 11l5 5 5-5" />
+                <path d="M4 20h16" />
+              </svg>
+              ダウンロード（setup.exe）
+            </a>
+          </div>
+
+          <p class="only-note">
+            ダウンロードした <code>AI-Office-Workspace-Setup.exe</code> を実行して端末に
+            インストールしたうえで、スタートメニューの「AI Office Workspace」から
+            起動してください。ポータブル版（展開して終わりの形式）は提供していません。
+          </p>
+        </div>
+      </div>
+
+      <!-- features -->
+      <section id="features">
+        <div class="wrap">
+          <h2 class="section-title">できること</h2>
+          <p class="section-note">4 つの AI と 3 つのエディタを、切り替えながら 1 画面で使います。</p>
+
+          <div class="cards">
+            <article class="card">
+              <div class="icon" aria-hidden="true">🤖</div>
+              <h3>4 つの AI をタブで比較</h3>
+              <p>
+                ChatGPT / GLM / DeepSeek / Qwen を公式サイトのまま表示。ログイン情報と
+                Cookie はサービスごとに分離され、タブを切り替えてもページは再読み込みされません。
+              </p>
+            </article>
+            <article class="card">
+              <div class="icon" aria-hidden="true">📊</div>
+              <h3>Excel・Word・Slide エディタ</h3>
+              <p>
+                セル編集・数式・複数シート、見出しや書式付きの文書、16:9 のスライド編集と
+                プレゼンテーション表示に対応しています。
+              </p>
+            </article>
+            <article class="card">
+              <div class="icon" aria-hidden="true">✨</div>
+              <h3>AI 回答をその場で変換</h3>
+              <p>
+                最新の回答を取得し、テキスト・表・文書・スライドのいずれかへ変換して挿入。
+                Markdown の表や見出し構造をそのまま活かせます。
+              </p>
+            </article>
+            <article class="card">
+              <div class="icon" aria-hidden="true">📁</div>
+              <h3>既存ファイルの取り込み</h3>
+              <p>
+                .xlsx / .csv / .docx / .pptx をドラッグ＆ドロップで取り込み。
+                AI が生成したファイルをダウンロード後、そのまま編集へ回せます。
+              </p>
+            </article>
+            <article class="card">
+              <div class="icon" aria-hidden="true">🔒</div>
+              <h3>変換はすべて端末内で処理</h3>
+              <p>
+                回答の変換・ファイルの読み取りはローカルで行い、外部の AI API は呼びません。
+                API キーの登録も不要です。
+              </p>
+            </article>
+            <article class="card">
+              <div class="icon" aria-hidden="true">💾</div>
+              <h3>自動保存と復元</h3>
+              <p>
+                編集が止まると自動保存され、次回起動時に内容・モード・ウィンドウ配置が
+                そのまま復元されます。手動保存は <kbd>Ctrl</kbd>+<kbd>S</kbd> です。
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- install -->
+      <section id="install">
+        <div class="wrap">
+          <h2 class="section-title">インストール手順</h2>
+          <p class="section-note">
+            setup.exe は端末にインストールして使う形式です（展開や別途ツールは不要）。
+          </p>
+
+          <ol class="steps">
+            <li>
+              <h3>setup.exe をダウンロード</h3>
+              <p>上のボタンから <code>AI-Office-Workspace-Setup.exe</code> を保存します。</p>
+            </li>
+            <li>
+              <h3>setup.exe を実行</h3>
+              <p>
+                保存した <code>setup.exe</code> をダブルクリックします。セットアップウィザードが
+                日本語で表示されます。
+              </p>
+            </li>
+            <li>
+              <h3>画面の案内に従ってインストール</h3>
+              <p>
+                インストール先は <code>%LOCALAPPDATA%\Programs\AI Office Workspace</code> です。
+                管理者権限（UAC）は求められません。デスクトップ／スタートメニューの
+                ショートカットは既定で作成され、ウィザードの画面で外すこともできます。
+              </p>
+            </li>
+            <li>
+              <h3>スタートメニューから起動</h3>
+              <p>
+                インストール完了時に「AI Office Workspace を起動する」を選ぶか、
+                スタートメニューの「AI Office Workspace」から起動します。
+              </p>
+            </li>
+          </ol>
+
+          <div class="notice" style="margin-top: 22px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 3l9 16H3l9-16z" />
+              <path d="M12 9v5" />
+              <path d="M12 17h.01" />
+            </svg>
+            <p>
+              <strong>初回起動時に SmartScreen の警告が出る場合があります。</strong>
+              本アプリはコード署名を行っていないためです。画面の「詳細情報」→「実行」で
+              インストール／起動できます。
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- requirements -->
+      <section id="requirements">
+        <div class="wrap">
+          <h2 class="section-title">動作環境</h2>
+          <p class="section-note">インストール前に端末の環境をご確認ください。</p>
+
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">項目</th>
+                  <th scope="col">要件</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>OS</td>
+                  <td>Windows 10 / Windows 11（64-bit）</td>
+                </tr>
+                <tr>
+                  <td>ディスク</td>
+                  <td>インストール先に数百 MB の空き容量（Qt WebEngine を同梱しています）</td>
+                </tr>
+                <tr>
+                  <td>画面</td>
+                  <td>1100 × 650 以上（初期サイズ 1500 × 900）</td>
+                </tr>
+                <tr>
+                  <td>ネットワーク</td>
+                  <td>AI サイトの利用時に必要（各サービスへのログインは利用者ご自身で行います）</td>
+                </tr>
+                <tr>
+                  <td>その他</td>
+                  <td>Python / Node.js のインストールは不要です（実行に必要なものはすべて同梱）</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- data locations -->
+      <section id="data">
+        <div class="wrap">
+          <h2 class="section-title">インストール後の保存場所</h2>
+          <p class="section-note">
+            プログラム本体とユーザーデータは分けて保存されます。
+          </p>
+
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">種類</th>
+                  <th scope="col">場所</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>プログラム本体</td>
+                  <td><code>%LOCALAPPDATA%\Programs\AI Office Workspace</code></td>
+                </tr>
+                <tr>
+                  <td>ショートカット</td>
+                  <td>スタートメニュー（デスクトップはインストール時の任意選択）</td>
+                </tr>
+                <tr>
+                  <td>設定・自動保存・ログイン情報</td>
+                  <td><code>%APPDATA%\AI Office Workspace</code></td>
+                </tr>
+                <tr>
+                  <td>AI が生成したダウンロード</td>
+                  <td><code>ドキュメント\AI Office Workspace\downloads</code></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p class="section-note" style="margin-top: 18px">
+            アンインストールしても設定・ログイン情報・ダウンロードしたファイルは残ります。
+            完全に削除する場合は <code>%APPDATA%\AI Office Workspace</code> を削除してください。
+          </p>
+        </div>
+      </section>
+
+      <!-- notes -->
+      <section id="notes">
+        <div class="wrap">
+          <h2 class="section-title">注意事項</h2>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">項目</th>
+                  <th scope="col">内容</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>配布形式</td>
+                  <td>
+                    zip（中にインストーラー setup.exe）。インストールして使う形式で、
+                    ポータブル版は配布していません。
+                  </td>
+                </tr>
+                <tr>
+                  <td>コード署名</td>
+                  <td>未署名のため、初回に SmartScreen の警告が表示されることがあります。</td>
+                </tr>
+                <tr>
+                  <td>AI サイトの利用</td>
+                  <td>
+                    各サービスのログイン・利用規約に従ってご利用ください。サイト側の仕様変更や
+                    制限により、回答を取得できない場合があります。
+                  </td>
+                </tr>
+                <tr>
+                  <td>アカウント情報</td>
+                  <td>
+                    パスワードや API キーを保存・送信する機能はありません。ログイン状態は
+                    サービスごとのプロファイルにのみ保存されます。
+                  </td>
+                </tr>
+                <tr>
+                  <td>取り込みの制限</td>
+                  <td>
+                    図形・画像・一部の書式は引き継がれません。20 MB を超えるファイルは取り込めません。
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap">
+        <span>© 2026 AI Office Workspace</span>
+        <span>Windows 10 / 11（64-bit）・インストール版のみ</span>
+      </div>
+    </footer>
+  </body>
+</html>

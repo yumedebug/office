@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Frontend
+frontend/node_modules/
+dist/
+frontend/public/qtwebchannel.js
+
+# Runtime data (web profiles hold login sessions; never commit)
+profiles/
+
+# Packaging output (PyInstaller / Inno Setup)
+packaging/output/
+packaging/work/
+packaging/app.ico
+
+# Download artifacts next to the page (setup.exe and the zip it is packed into)
+site/*.exe
+site/*.zip
+
+# Local project files
+*.aiow.json
