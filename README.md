@@ -1,6 +1,7 @@
 # AI Office Workspace
 
-左側に ChatGPT / Claude / DeepSeek / Qwen の公式 Web サイトを、右側に Excel / Word / PowerPoint 風の
+左側に ChatGPT / Claude / DeepSeek / Qwen と Google Docs / Sheets / Slides の公式 Web サイトを、
+右側に Excel / Word / PowerPoint 風の
 エディタを並べた Windows 向けデスクトップアプリです。AI の回答を取得し、そのまま
 表計算・文書・スライドへ変換して編集できます。
 
@@ -15,12 +16,12 @@
 
 ## Google ファイルの埋め込み
 
-エディタ上部の **Google ファイル** から、Google ドキュメント・スプレッドシート・スライドの
-`https://docs.google.com/.../d/...` 共有 URL を入力できます。アプリは URL のホストと形式を
-検証したうえで、Google が許可する範囲の iframe プレビューを表示し、**Google で開く**導線も
-提供します。
+左ペインの **Google Docs / Google Sheets / Google Slides** タブでは、各公式サイトを
+WebEngine内の独立タブとしてそのまま開きます。Googleアカウントでログインすれば、Google側の
+通常の編集画面を使用できます。エディタ上部の **Google ファイル** は、共有URLを一時的に
+iframe表示する補助導線です。
 
-- Google 側のログイン、共有権限、`X-Frame-Options` / CSP により埋め込みできないファイルがあります。
+- Google 側のログイン、共有権限、`X-Frame-Options` / CSP によりiframe表示できないファイルがあります。
 - OAuth や Google API のトークンは扱わないため、Google 側で編集した内容を自動的に
   `.pptx` / `.docx` / `.xlsx` へ同期・変換する機能は未対応です。必要な場合は Google 側の
   ダウンロード機能でファイルを保存し、アプリへドロップして取り込んでください。
@@ -143,14 +144,14 @@ site\
 ```
 
 ```text
-https://github.com/yumedebug/office/releases/download/v1.0.1/AI-Office-Workspace-Setup.exe
+https://github.com/yumedebug/office/releases/download/v1.0.2/AI-Office-Workspace-Setup.exe
 ```
 
 - 配布物は **setup.exe 1 ファイル**です。利用者はダウンロードして実行するだけです。
 - Cloudflare Pages は 1 ファイル **25 MiB** までなので、約 230 MB の setup.exe は
   ページと同じ場所には置けません。**デプロイするのは `site\index.html` だけ**にします
   （`site\*.zip` は `.gitignore` 済みなので、フォルダごとデプロイしても exe / zip は上がりません）。
-- バージョンを上げたら、Releases のタグと `index.html` の href（`/v1.0.1/` の部分）を
+- バージョンを上げたら、Releases のタグと `index.html` の href（`/v1.0.2/` の部分）を
   揃えてください。
 - 手渡し用の zip が欲しい場合だけ、次のコマンドで作れます（サイトからは参照しません）。
 

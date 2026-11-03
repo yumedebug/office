@@ -101,11 +101,21 @@ PROFILES_DIR = BASE_DIR / "profiles"
 BUNDLED_CONFIG_PATH = BASE_DIR / "config.json"
 
 AI_ORDER = ("ChatGPT", "Claude", "DeepSeek", "Qwen")
+GOOGLE_ORDER = ("Google Docs", "Google Sheets", "Google Slides")
+WEB_ORDER = AI_ORDER + GOOGLE_ORDER
 AI_SLUGS = {
     "ChatGPT": "chatgpt",
     "Claude": "claude",
     "DeepSeek": "deepseek",
     "Qwen": "qwen",
+    "Google Docs": "google-docs",
+    "Google Sheets": "google-sheets",
+    "Google Slides": "google-slides",
+}
+GOOGLE_SITE_DEFAULTS = {
+    "Google Docs": "https://docs.google.com/document/u/0/",
+    "Google Sheets": "https://docs.google.com/spreadsheets/u/0/",
+    "Google Slides": "https://docs.google.com/presentation/u/0/",
 }
 MODES = ("spreadsheet", "document", "slides")
 MODE_LABELS = {"spreadsheet": "Excel", "document": "Word", "slides": "Slide"}
@@ -135,6 +145,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "DeepSeek": "https://chat.deepseek.com/",
         "Qwen": "https://chat.qwen.ai/",
     },
+    "google_sites": GOOGLE_SITE_DEFAULTS.copy(),
 }
 
 EMPTY_PROJECT: dict[str, Any] = {
@@ -504,6 +515,22 @@ def load_config() -> tuple[dict[str, Any], list[str]]:
 
     # Only the four supported sites are used; other names are ignored.
     config["ai_sites"] = {name: config["ai_sites"][name] for name in AI_ORDER}
+    google_sites = raw.get("google_sites")
+    if google_sites is not None and not isinstance(google_sites, dict):
+        warnings.append("config.json の google_sites が不正なため既定の URL を使用します。")
+        google_sites = None
+    if isinstance(google_sites, dict):
+        for name in GOOGLE_ORDER:
+            url = google_sites.get(name)
+            if isinstance(url, str) and url.startswith(("http://", "https://")):
+                config["google_sites"][name] = url.strip()
+            elif url is not None:
+                warnings.append(
+                    f"config.json の google_sites.{name} が URL ではないため既定値を用います。"
+                )
+    config["google_sites"] = {
+        name: config["google_sites"][name] for name in GOOGLE_ORDER
+    }
     return config, warnings
 
 
@@ -1247,9 +1274,9 @@ class MainWindow(QMainWindow):
         self.ai_tabs.setDrawBase(False)
         self.ai_tabs.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.ai_tabs.setCursor(Qt.CursorShape.PointingHandCursor)
-        for name in AI_ORDER:
+        for name in WEB_ORDER:
             self.ai_tabs.addTab(name)
-        self.ai_tabs.setToolTip("AI サービスごとに Cookie とセッションを分離しています。")
+        self.ai_tabs.setToolTip("AI と Google の公式サイトをアプリ内の別タブで開きます。")
         layout.addWidget(self.ai_tabs)
         # Connected after the tabs exist so the first insertion cannot fire a
         # signal while the rest of the window is still being built.
@@ -1307,8 +1334,8 @@ class MainWindow(QMainWindow):
         self.ai_stack = QStackedWidget()
         layout.addWidget(self.ai_stack, 1)
 
-        for name in AI_ORDER:
-            view = self._create_ai_view(name)
+        for name in WEB_ORDER:
+            view = self._create_web_view(name)
             self.ai_stack.addWidget(view)
 
         return panel
@@ -1321,7 +1348,7 @@ class MainWindow(QMainWindow):
         button.setCursor(Qt.CursorShape.PointingHandCursor)
         return button
 
-    def _create_ai_view(self, name: str) -> QWebEngineView:
+    def _create_web_view(self, name: str) -> QWebEngineView:
         slug = AI_SLUGS[name]
         profile_path = profile_store_dir() / slug
         # Reuse the old GLM browser profile once, so existing Claude users do
@@ -1342,7 +1369,8 @@ class MainWindow(QMainWindow):
         view.loadProgress.connect(lambda value, n=name: self._on_ai_load_progress(n, value))
         view.loadFinished.connect(lambda ok, n=name: self._on_ai_load_finished(n, ok))
         view.urlChanged.connect(lambda url, n=name: self._on_ai_url_changed(n, url))
-        view.setUrl(QUrl(self.config["ai_sites"][name]))
+        url = self.config["ai_sites"][name] if name in AI_ORDER else self.config["google_sites"][name]
+        view.setUrl(QUrl(url))
         return view
 
     def _build_office_panel(self) -> QWidget:
@@ -1542,9 +1570,9 @@ class MainWindow(QMainWindow):
 
     def current_ai_name(self) -> str:
         index = self.ai_tabs.currentIndex()
-        if 0 <= index < len(AI_ORDER):
-            return AI_ORDER[index]
-        return AI_ORDER[0]
+        if 0 <= index < len(WEB_ORDER):
+            return WEB_ORDER[index]
+        return WEB_ORDER[0]
 
     def current_ai_view(self) -> QWebEngineView:
         return self.ai_views[self.current_ai_name()]
@@ -1565,7 +1593,7 @@ class MainWindow(QMainWindow):
         if index < 0 or not hasattr(self, "ai_stack"):
             return
         self.ai_stack.setCurrentIndex(index)
-        name = AI_ORDER[index] if index < len(AI_ORDER) else AI_ORDER[0]
+        name = WEB_ORDER[index] if index < len(WEB_ORDER) else WEB_ORDER[0]
         self.ai_status_label.setText(name)
         self.error_banner.setVisible(bool(self._ai_error_url.get(name)))
         self._refresh_navigation_state()
@@ -1575,9 +1603,9 @@ class MainWindow(QMainWindow):
         if not hasattr(self, "back_button"):
             return
         index = self.ai_tabs.currentIndex()
-        if index < 0 or index >= len(AI_ORDER):
+        if index < 0 or index >= len(WEB_ORDER):
             return
-        view = self.ai_views.get(AI_ORDER[index])
+        view = self.ai_views.get(WEB_ORDER[index])
         if view is None:
             return
         history = view.history()
@@ -1604,7 +1632,7 @@ class MainWindow(QMainWindow):
 
     def _on_ai_load_started(self, name: str) -> None:
         if name == self.current_ai_name():
-            self.set_status(f"Loading AI... ({name})", "busy")
+            self.set_status(f"Loading site... ({name})", "busy")
         self._refresh_navigation_state()
 
     def _on_ai_load_progress(self, name: str, value: int) -> None:
@@ -1931,6 +1959,16 @@ class MainWindow(QMainWindow):
         if not self._ensure_editor():
             return
         name = self.current_ai_name()
+        if name not in AI_ORDER:
+            self.set_status("Google サイトからの回答抽出は対象外です", "error")
+            QMessageBox.information(
+                self,
+                "Google サイト",
+                "Google Docs / Sheets / Slides は公式サイトをそのまま表示しています。\n"
+                "編集内容の取り込みは、Google 側のダウンロード機能でファイルを保存し、"
+                "Office エディタへドロップしてください。",
+            )
+            return
         view = self.ai_views[name]
         self.set_status("Extracting response...", "busy")
         view.page().runJavaScript(build_extraction_script(name), self._on_extracted)
@@ -2363,7 +2401,7 @@ class MainWindow(QMainWindow):
             self.splitter.setSizes(sizes)
 
         tab_index = state.get("aiTab")
-        if isinstance(tab_index, int) and 0 <= tab_index < len(AI_ORDER):
+        if isinstance(tab_index, int) and 0 <= tab_index < len(WEB_ORDER):
             self.ai_tabs.setCurrentIndex(tab_index)
         else:
             self.ai_tabs.setCurrentIndex(0)

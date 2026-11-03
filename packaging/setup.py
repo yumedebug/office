@@ -40,7 +40,7 @@ from tkinter import filedialog, messagebox, ttk
 # ---------------------------------------------------------------------------
 
 APP_NAME = "AI Office Workspace"
-APP_VERSION = "1.0.1"
+APP_VERSION = "1.0.2"
 APP_EXE_NAME = "AIOfficeWorkspace.exe"
 
 #: Key under HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall.

@@ -8,5 +8,10 @@
     "Claude": "https://claude.ai/",
     "DeepSeek": "https://chat.deepseek.com/",
     "Qwen": "https://chat.qwen.ai/"
+  },
+  "google_sites": {
+    "Google Docs": "https://docs.google.com/document/u/0/",
+    "Google Sheets": "https://docs.google.com/spreadsheets/u/0/",
+    "Google Slides": "https://docs.google.com/presentation/u/0/"
   }
 }
