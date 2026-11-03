@@ -70,18 +70,18 @@ if not exist "dist\index.html" (
     goto :fail
 )
 
-rem -- 2/7 qwebchannel.js -----------------------------------------------------
-set "STEP=qwebchannel.js"
-echo [2/7] Preparing qwebchannel.js...
-%PYTHON% packaging\prepare_qwebchannel.py
-if errorlevel 1 goto :fail
-
-rem -- 3/7 python dependencies ------------------------------------------------
+rem -- 2/7 python dependencies ------------------------------------------------
 set "STEP=Python dependencies"
-echo [3/7] Installing the Python dependencies...
+echo [2/7] Installing the Python dependencies...
 %PYTHON% -m pip install -r requirements.txt
 if errorlevel 1 goto :fail
 %PYTHON% -m pip install -r packaging\requirements-build.txt
+if errorlevel 1 goto :fail
+
+rem -- 3/7 qwebchannel.js -----------------------------------------------------
+set "STEP=qwebchannel.js"
+echo [3/7] Preparing qwebchannel.js...
+%PYTHON% packaging\prepare_qwebchannel.py
 if errorlevel 1 goto :fail
 
 rem -- 4/7 icon ---------------------------------------------------------------
