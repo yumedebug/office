@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """AI Office Workspace.
 
-A Windows desktop application that shows the official web sites of four AI
-assistants on the left and an Office-like editor (spreadsheet / document /
-presentation) built with React on the right.
+A Windows desktop application that shows the official web sites of the AI
+assistants on the left and a local Office-like editor (spreadsheet / document /
+presentation) plus the official Google Docs / Sheets / Slides sites on the
+right.
 
 The Python side owns windows, browser tabs, web profiles, extraction of AI
 answers, file dialogs and persistence.  The React side owns the editors and all
@@ -55,8 +56,8 @@ from PySide6.QtWebEngineCore import (
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import (
     QApplication,
-    QButtonGroup,
     QDialog,
+    QFileDialog,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -83,7 +84,7 @@ FROZEN = bool(getattr(sys, "frozen", False))
 
 
 def _resource_dir() -> Path:
-    """Directory holding the read-only application files.
+    r"""Directory holding the read-only application files.
 
     In a PyInstaller build the frontend build and the default config live in
     ``_MEIPASS`` (one-file) or ``_internal`` next to the executable (one-folder),
@@ -102,7 +103,9 @@ BUNDLED_CONFIG_PATH = BASE_DIR / "config.json"
 
 AI_ORDER = ("ChatGPT", "Claude", "DeepSeek", "Qwen")
 GOOGLE_ORDER = ("Google Docs", "Google Sheets", "Google Slides")
-WEB_ORDER = AI_ORDER + GOOGLE_ORDER
+#: The AI column only hosts the assistants.  Google's official sites sit next
+#: to the local Office editor on the right, where files produced there belong.
+WEB_ORDER = AI_ORDER
 AI_SLUGS = {
     "ChatGPT": "chatgpt",
     "Claude": "claude",
@@ -158,45 +161,57 @@ EMPTY_PROJECT: dict[str, Any] = {
     "metadata": {"title": "Untitled"},
 }
 
-C_BG = "#111318"
-C_SUB = "#1B1E25"
-C_PANEL = "#20242C"
-C_BORDER = "#343943"
-C_TEXT = "#F2F3F5"
-C_MUTED = "#A0A6B2"
-C_ACCENT = "#5B8DEF"
+C_BG = "#0F1115"
+C_SUB = "#14171D"
+C_PANEL = "#1B1F27"
+C_BORDER = "#272C36"
+C_TEXT = "#ECEEF2"
+C_MUTED = "#98A1B0"
+C_ACCENT = "#6E9BF5"
 C_OK = "#6FCF97"
 C_ERROR = "#F2777A"
+
+#: Default share of the width given to the AI column.  The taskbar window is
+#: deliberately narrow (about one third) so the local Office editor, which is
+#: the main workspace, gets the remaining 70 %.
+AI_COLUMN_RATIO = 0.3
+UI_STATE_LAYOUT_VERSION = 2
 
 QSS_TEMPLATE = """
 QWidget {
     background-color: %(bg)s;
     color: %(text)s;
-    font-family: "Segoe UI", "Yu Gothic UI", "Meiryo", sans-serif;
-    font-size: 13px;
+    font-family: "Segoe UI Variable Text", "Segoe UI", "Yu Gothic UI", "Meiryo", sans-serif;
+    font-size: 12px;
 }
 QMainWindow, QDialog {
     background-color: %(bg)s;
 }
 QTabBar {
-    background-color: %(sub)s;
+    background: transparent;
 }
 QTabBar::tab {
     background: transparent;
     color: %(muted)s;
-    padding: 11px 26px;
-    border: none;
-    border-bottom: 2px solid transparent;
-    min-width: 84px;
+    padding: 6px 16px;
+    margin: 4px 2px;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    min-width: 56px;
 }
 QTabBar::tab:hover {
     color: %(text)s;
     background-color: %(panel)s;
 }
 QTabBar::tab:selected {
+    color: #FFFFFF;
+    background-color: %(accent)s;
+    border-color: %(accent)s;
+}
+QTabBar#googleTabs::tab:selected {
     color: %(text)s;
-    background-color: %(panel)s;
-    border-bottom: 2px solid %(accent)s;
+    background-color: #2A3346;
+    border-color: #3B4A66;
 }
 QFrame#navBar {
     background-color: %(sub)s;
@@ -215,48 +230,58 @@ QToolButton {
     background-color: transparent;
     color: %(muted)s;
     border: 1px solid transparent;
-    border-radius: 6px;
-    padding: 6px 12px;
+    border-radius: 7px;
+    padding: 5px 11px;
 }
 QToolButton:hover {
     background-color: %(panel)s;
     color: %(text)s;
 }
 QToolButton:disabled {
-    color: #5A6068;
+    color: #59606C;
 }
 QToolButton:checked {
-    background-color: #223052;
-    color: %(accent)s;
-    border: 1px solid #2F4370;
+    background-color: #21304C;
+    color: #B9CDFF;
+    border: 1px solid #354C77;
 }
 QToolButton#navButton {
-    font-size: 15px;
-    padding: 2px 8px;
-    min-width: 22px;
+    font-size: 14px;
+    padding: 2px 7px;
+    min-width: 20px;
+}
+QToolButton#accentButton {
+    background-color: #22304D;
+    border: 1px solid #344C78;
+    color: #C8D9FF;
+}
+QToolButton#accentButton:hover {
+    background-color: #2B3D61;
+    color: #FFFFFF;
 }
 QPushButton {
     background-color: %(panel)s;
     color: %(text)s;
     border: 1px solid %(border)s;
-    border-radius: 6px;
-    padding: 6px 14px;
+    border-radius: 7px;
+    padding: 6px 13px;
 }
 QPushButton:hover {
     border-color: %(accent)s;
     color: %(accent)s;
 }
 QPushButton:pressed {
-    background-color: #1A1D24;
+    background-color: #161A21;
 }
 QPushButton#primaryButton {
     background-color: %(accent)s;
     border: 1px solid %(accent)s;
-    color: #FFFFFF;
+    color: #0F1115;
+    font-weight: 600;
 }
 QPushButton#primaryButton:hover {
-    background-color: #6F9BF3;
-    color: #FFFFFF;
+    background-color: #86ACF7;
+    color: #0F1115;
 }
 QLabel {
     background: transparent;
@@ -265,10 +290,13 @@ QLabel#mutedLabel {
     color: %(muted)s;
 }
 QSplitter::handle {
-    background-color: %(border)s;
+    background: transparent;
 }
 QSplitter::handle:horizontal {
-    width: 1px;
+    width: 8px;
+}
+QSplitter::handle:horizontal:hover {
+    background-color: #33415A;
 }
 QStatusBar {
     background-color: %(sub)s;
@@ -282,34 +310,34 @@ QPlainTextEdit, QLineEdit {
     background-color: %(panel)s;
     color: %(text)s;
     border: 1px solid %(border)s;
-    border-radius: 6px;
+    border-radius: 7px;
     selection-background-color: %(accent)s;
     padding: 6px;
 }
 QScrollBar:vertical {
-    background: %(sub)s;
-    width: 12px;
-    margin: 0;
+    background: transparent;
+    width: 10px;
+    margin: 2px;
 }
 QScrollBar::handle:vertical {
-    background: %(border)s;
-    border-radius: 6px;
+    background: #303744;
+    border-radius: 5px;
     min-height: 28px;
 }
 QScrollBar::handle:vertical:hover {
-    background: #454B57;
+    background: #445066;
 }
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
     height: 0;
 }
 QScrollBar:horizontal {
-    background: %(sub)s;
-    height: 12px;
-    margin: 0;
+    background: transparent;
+    height: 10px;
+    margin: 2px;
 }
 QScrollBar::handle:horizontal {
-    background: %(border)s;
-    border-radius: 6px;
+    background: #303744;
+    border-radius: 5px;
     min-width: 28px;
 }
 QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
@@ -319,6 +347,12 @@ QMenu {
     background-color: %(panel)s;
     color: %(text)s;
     border: 1px solid %(border)s;
+    border-radius: 8px;
+    padding: 4px;
+}
+QMenu::item {
+    padding: 6px 18px;
+    border-radius: 5px;
 }
 QMenu::item:selected {
     background-color: #223052;
@@ -1187,6 +1221,11 @@ class MainWindow(QMainWindow):
 
         self.profiles = ProfileStore()
         self.ai_views: dict[str, QWebEngineView] = {}
+        #: Google sites live on the right and are created the first time their
+        #: tab is opened, so startup only loads the visible pages.
+        self.google_views: dict[str, QWebEngineView] = {}
+        self.google_panels: dict[str, QWidget] = {}
+        self.google_nav: dict[str, dict[str, Any]] = {}
         self._popups: list[QWebEngineView] = []
 
         self.current_path: Optional[Path] = None
@@ -1201,6 +1240,7 @@ class MainWindow(QMainWindow):
         self._local_server: Optional[StaticFileServer] = None
         self._office_via_http = False
         self._save_in_progress = False
+        self._restoring_ui = False
 
         self.setWindowTitle(config["app_name"])
         self.resize(
@@ -1240,12 +1280,18 @@ class MainWindow(QMainWindow):
 
         self.splitter = QSplitter(Qt.Orientation.Horizontal)
         self.splitter.setChildrenCollapsible(False)
-        self.splitter.setHandleWidth(4)
+        self.splitter.setHandleWidth(8)
+        # Qt WebEngine repaints asynchronously.  Resizing its native surface on
+        # every mouse move makes the two panes flash; a rubber-band resize keeps
+        # the drag smooth and applies the new sizes once, on release.
+        self.splitter.setOpaqueResize(False)
         self.splitter.addWidget(self._build_ai_panel())
         self.splitter.addWidget(self._build_office_panel())
         self.splitter.setStretchFactor(0, 3)
-        self.splitter.setStretchFactor(1, 2)
-        self.splitter.setSizes([900, 600])
+        self.splitter.setStretchFactor(1, 7)
+        width = int(self.config["window_width"])
+        ai_width = max(340, int(width * AI_COLUMN_RATIO))
+        self.splitter.setSizes([ai_width, max(640, width - ai_width)])
         self.splitter.splitterMoved.connect(self._on_splitter_moved)
         root.addWidget(self.splitter, 1)
 
@@ -1265,18 +1311,20 @@ class MainWindow(QMainWindow):
 
     def _build_ai_panel(self) -> QWidget:
         panel = QWidget()
+        panel.setMinimumWidth(320)
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
         self.ai_tabs = QTabBar()
+        self.ai_tabs.setObjectName("aiTabs")
         self.ai_tabs.setExpanding(True)
         self.ai_tabs.setDrawBase(False)
         self.ai_tabs.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.ai_tabs.setCursor(Qt.CursorShape.PointingHandCursor)
-        for name in WEB_ORDER:
+        for name in AI_ORDER:
             self.ai_tabs.addTab(name)
-        self.ai_tabs.setToolTip("AI と Google の公式サイトをアプリ内の別タブで開きます。")
+        self.ai_tabs.setToolTip("AI の公式サイトをアプリ内の別タブで開きます。")
         layout.addWidget(self.ai_tabs)
         # Connected after the tabs exist so the first insertion cannot fire a
         # signal while the rest of the window is still being built.
@@ -1334,10 +1382,6 @@ class MainWindow(QMainWindow):
         self.ai_stack = QStackedWidget()
         layout.addWidget(self.ai_stack, 1)
 
-        for name in WEB_ORDER:
-            view = self._create_web_view(name)
-            self.ai_stack.addWidget(view)
-
         return panel
 
     def _make_nav_button(self, text: str, tooltip: str) -> QToolButton:
@@ -1373,8 +1417,132 @@ class MainWindow(QMainWindow):
         view.setUrl(QUrl(url))
         return view
 
+    def _ensure_ai_view(self, name: str) -> QWebEngineView:
+        """Create an AI view the first time its tab is opened.
+
+        Keeping the other assistants unloaded makes startup much lighter: a
+        ChatGPT-like page is several MB of JavaScript each, and most sessions
+        only use one or two of them.
+        """
+        view = self.ai_views.get(name)
+        if view is None:
+            view = self._create_web_view(name)
+            self.ai_stack.addWidget(view)
+        return view
+
+    # -- Google tabs (right pane) -----------------------------------------
+
+    def _on_right_tab_changed(self, index: int) -> None:
+        if index <= 0:
+            self.right_stack.setCurrentIndex(0)
+            self.set_status("Ready")
+            return
+        if index - 1 >= len(GOOGLE_ORDER):
+            return
+        name = GOOGLE_ORDER[index - 1]
+        panel = self.google_panels.get(name)
+        if panel is None:
+            panel = self._create_google_panel(name)
+        self.right_stack.setCurrentWidget(panel)
+        self.set_status(f"{name} を開いています…", "busy")
+
+    def _create_google_panel(self, name: str) -> QWidget:
+        panel = QWidget()
+        layout = QVBoxLayout(panel)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        nav = QFrame()
+        nav.setObjectName("navBar")
+        nav_layout = QHBoxLayout(nav)
+        nav_layout.setContentsMargins(8, 4, 8, 4)
+        nav_layout.setSpacing(4)
+
+        back = self._make_nav_button("◀", "戻る")
+        forward = self._make_nav_button("▶", "進む")
+        reload_button = self._make_nav_button("⟳", "再読み込み")
+        external = self._make_nav_button("↗", "既定のブラウザで開く")
+        nav_layout.addWidget(back)
+        nav_layout.addWidget(forward)
+        nav_layout.addWidget(reload_button)
+
+        url_label = QLabel("")
+        url_label.setObjectName("mutedLabel")
+        url_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        url_label.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
+        )
+        nav_layout.addWidget(url_label, 1)
+        nav_layout.addWidget(external)
+
+        view = QWebEngineView()
+        page = AiPage(self.profiles.get(AI_SLUGS[name], profile_store_dir() / AI_SLUGS[name]), view, self)
+        view.setPage(page)
+        slug = AI_SLUGS[name]
+        self._install_download_handler(page.profile(), slug)
+
+        self.google_views[name] = view
+        self.google_panels[name] = panel
+        self.google_nav[name] = {
+            "back": back,
+            "forward": forward,
+            "reload": reload_button,
+            "url": url_label,
+        }
+
+        back.clicked.connect(view.back)
+        forward.clicked.connect(view.forward)
+        reload_button.clicked.connect(view.reload)
+        external.clicked.connect(
+            lambda: self._open_google_external(name)
+        )
+        view.urlChanged.connect(lambda url, n=name: self._on_google_url_changed(n, url))
+        view.loadStarted.connect(lambda n=name: self._on_google_load_started(n))
+        view.loadFinished.connect(lambda ok, n=name: self._on_google_load_finished(n, ok))
+
+        layout.addWidget(nav)
+        layout.addWidget(view, 1)
+        self.right_stack.addWidget(panel)
+        back.setEnabled(False)
+        forward.setEnabled(False)
+        view.setUrl(QUrl(self.config["google_sites"][name]))
+        return panel
+
+    def _on_google_url_changed(self, name: str, url: QUrl) -> None:
+        widgets = self.google_nav.get(name)
+        if widgets is None:
+            return
+        widgets["url"].setText(url.toString())
+        view = self.google_views.get(name)
+        if view is not None:
+            history = view.history()
+            widgets["back"].setEnabled(history.canGoBack())
+            widgets["forward"].setEnabled(history.canGoForward())
+
+    def _on_google_load_started(self, name: str) -> None:
+        if self.google_panels.get(name) is self.right_stack.currentWidget():
+            self.set_status(f"Loading {name}...", "busy")
+
+    def _on_google_load_finished(self, name: str, ok: bool) -> None:
+        if self.google_panels.get(name) is not self.right_stack.currentWidget():
+            return
+        if ok:
+            self.set_status(f"{name} を開きました", "ok")
+        else:
+            self.set_status(f"Error: {name} を読み込めませんでした", "error")
+
+    def _open_google_external(self, name: str) -> None:
+        view = self.google_views.get(name)
+        if view is not None:
+            url = view.url()
+            if url.isValid() and not url.isEmpty():
+                QDesktopServices.openUrl(url)
+
     def _build_office_panel(self) -> QWidget:
         panel = QWidget()
+        panel.setMinimumWidth(600)
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
@@ -1382,28 +1550,25 @@ class MainWindow(QMainWindow):
         header = QFrame()
         header.setObjectName("officeHeader")
         header_layout = QVBoxLayout(header)
-        header_layout.setContentsMargins(10, 8, 10, 8)
-        header_layout.setSpacing(6)
+        header_layout.setContentsMargins(10, 6, 10, 6)
+        header_layout.setSpacing(4)
 
-        mode_row = QHBoxLayout()
-        mode_row.setContentsMargins(0, 0, 0, 0)
-        mode_row.setSpacing(4)
-        self.mode_group = QButtonGroup(self)
-        self.mode_group.setExclusive(True)
-        self.mode_buttons: dict[str, QToolButton] = {}
-        for key in MODES:
-            button = QToolButton()
-            button.setText(MODE_LABELS[key])
-            button.setCheckable(True)
-            button.setCursor(Qt.CursorShape.PointingHandCursor)
-            button.setToolTip(f"{MODE_LABELS[key]} モード")
-            button.clicked.connect(lambda _checked=False, k=key: self.set_editor_mode(k))
-            self.mode_group.addButton(button)
-            self.mode_buttons[key] = button
-            mode_row.addWidget(button)
-        mode_row.addStretch(1)
-        self.mode_buttons["spreadsheet"].setChecked(True)
-        header_layout.addLayout(mode_row)
+        # Google's official sites belong to the local workspace, not to the
+        # assistant column.  "Office" is the local editor; the three Google
+        # tabs reuse the same pane, so files can be handled in one place.
+        self.right_tabs = QTabBar()
+        self.right_tabs.setObjectName("googleTabs")
+        self.right_tabs.setExpanding(True)
+        self.right_tabs.setDrawBase(False)
+        self.right_tabs.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.right_tabs.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.right_tabs.addTab("Office")
+        self.right_tabs.setTabToolTip(0, "ローカルの Excel / Word / Slide エディタ")
+        for index, name in enumerate(GOOGLE_ORDER, start=1):
+            self.right_tabs.addTab(name)
+            self.right_tabs.setTabToolTip(index, f"{name} の公式サイトを右ペインで開きます")
+        self.right_tabs.currentChanged.connect(self._on_right_tab_changed)
+        header_layout.addWidget(self.right_tabs)
 
         toolbar = QHBoxLayout()
         toolbar.setContentsMargins(0, 0, 0, 0)
@@ -1413,26 +1578,26 @@ class MainWindow(QMainWindow):
         self.reload_office_button = self._make_toolbar_button(
             "更新", "エディタを再読み込みします（内容は保持されます）", self.reload_office
         )
-        self.insert_ai_button = self._make_toolbar_button(
-            "AI回答を挿入", "現在の AI の最新回答を取得します", self.insert_ai_response
-        )
         self.insert_selection_button = self._make_toolbar_button(
-            "選択テキストを挿入", "AI 画面で選択した文字列を取得します", self.insert_selection
+            "選択テキスト", "AI 画面で選択した文字列を取得します", self.insert_selection
         )
+        self.insert_ai_button = self._make_toolbar_button(
+            "AI回答を挿入", "現在の AI の最新回答を取得します (Ctrl+Shift+I)", self.insert_ai_response
+        )
+        self.insert_ai_button.setObjectName("accentButton")
         self.save_button = self._make_toolbar_button("保存", "プロジェクトを保存 (Ctrl+S)", self.save_project)
         self.open_button = self._make_toolbar_button("開く", "保存済みプロジェクトを開く (Ctrl+O)", self.open_project)
         self.new_button = self._make_toolbar_button("新規作成", "新しいプロジェクト (Ctrl+N)", self.new_project)
 
         for button in (
             self.reload_office_button,
-            self.insert_ai_button,
             self.insert_selection_button,
-            self.save_button,
-            self.open_button,
-            self.new_button,
+            self.insert_ai_button,
         ):
             toolbar.addWidget(button)
         toolbar.addStretch(1)
+        for button in (self.new_button, self.open_button, self.save_button):
+            toolbar.addWidget(button)
         header_layout.addLayout(toolbar)
         layout.addWidget(header)
 
@@ -1440,7 +1605,10 @@ class MainWindow(QMainWindow):
         self.office_container_layout = QVBoxLayout(self.office_container)
         self.office_container_layout.setContentsMargins(0, 0, 0, 0)
         self.office_container_layout.setSpacing(0)
-        layout.addWidget(self.office_container, 1)
+
+        self.right_stack = QStackedWidget()
+        self.right_stack.addWidget(self.office_container)
+        layout.addWidget(self.right_stack, 1)
         return panel
 
     def _make_toolbar_button(
@@ -1575,7 +1743,7 @@ class MainWindow(QMainWindow):
         return WEB_ORDER[0]
 
     def current_ai_view(self) -> QWebEngineView:
-        return self.ai_views[self.current_ai_name()]
+        return self._ensure_ai_view(self.current_ai_name())
 
     def register_popup(self, view: QWebEngineView) -> None:
         self._popups.append(view)
@@ -1592,8 +1760,11 @@ class MainWindow(QMainWindow):
     def _on_ai_tab_changed(self, index: int) -> None:
         if index < 0 or not hasattr(self, "ai_stack"):
             return
-        self.ai_stack.setCurrentIndex(index)
-        name = WEB_ORDER[index] if index < len(WEB_ORDER) else WEB_ORDER[0]
+        if index >= len(WEB_ORDER):
+            return
+        name = WEB_ORDER[index]
+        view = self._ensure_ai_view(name)
+        self.ai_stack.setCurrentWidget(view)
         self.ai_status_label.setText(name)
         self.error_banner.setVisible(bool(self._ai_error_url.get(name)))
         self._refresh_navigation_state()
@@ -1646,7 +1817,7 @@ class MainWindow(QMainWindow):
                 self.error_banner.setVisible(False)
                 self.set_status("Ready", "info")
         else:
-            view = self.ai_views[name]
+            view = self._ensure_ai_view(name)
             url = view.url().toString()
             self._ai_error_url[name] = url
             if name == self.current_ai_name() and hasattr(self, "error_banner"):
@@ -1662,7 +1833,7 @@ class MainWindow(QMainWindow):
         name = self.current_ai_name()
         self._ai_error_url.pop(name, None)
         self.error_banner.setVisible(False)
-        self.ai_views[name].reload()
+        self._ensure_ai_view(name).reload()
 
     def _force_open_error_url(self) -> None:
         url = self._ai_error_url.get(self.current_ai_name())
@@ -1931,10 +2102,12 @@ class MainWindow(QMainWindow):
             self._sync_mode_buttons(mode)
 
     def _sync_mode_buttons(self, mode: str) -> None:
-        button = self.mode_buttons.get(mode)
-        if button is not None and not button.isChecked():
-            button.setChecked(True)
+        # The local Excel / Word / Slide tabs live inside the React editor.
+        # Qt only mirrors the active mode in the status bar and makes sure the
+        # "Office" pane is showing (e.g. after Ctrl+2 while a Google tab is open).
         self.mode_status_label.setText(MODE_LABELS.get(mode, mode))
+        if hasattr(self, "right_tabs") and self.right_tabs.currentIndex() != 0:
+            self.right_tabs.setCurrentIndex(0)
 
     def set_editor_mode(self, mode: str) -> None:
         if mode not in MODES:
@@ -1959,17 +2132,7 @@ class MainWindow(QMainWindow):
         if not self._ensure_editor():
             return
         name = self.current_ai_name()
-        if name not in AI_ORDER:
-            self.set_status("Google サイトからの回答抽出は対象外です", "error")
-            QMessageBox.information(
-                self,
-                "Google サイト",
-                "Google Docs / Sheets / Slides は公式サイトをそのまま表示しています。\n"
-                "編集内容の取り込みは、Google 側のダウンロード機能でファイルを保存し、"
-                "Office エディタへドロップしてください。",
-            )
-            return
-        view = self.ai_views[name]
+        view = self._ensure_ai_view(name)
         self.set_status("Extracting response...", "busy")
         view.page().runJavaScript(build_extraction_script(name), self._on_extracted)
 
@@ -2378,6 +2541,13 @@ class MainWindow(QMainWindow):
     # -- UI state ----------------------------------------------------------
 
     def _restore_ui_state(self) -> None:
+        self._restoring_ui = True
+        try:
+            self._restore_ui_state_inner()
+        finally:
+            self._restoring_ui = False
+
+    def _restore_ui_state_inner(self) -> None:
         path = self._ui_state_path()
         state: dict[str, Any] = {}
         if path.exists():
@@ -2393,8 +2563,10 @@ class MainWindow(QMainWindow):
             self.current_path = Path(saved_path)
 
         sizes = state.get("splitter")
+        layout_version = state.get("layoutVersion")
         if (
-            isinstance(sizes, list)
+            layout_version == UI_STATE_LAYOUT_VERSION
+            and isinstance(sizes, list)
             and len(sizes) == 2
             and all(isinstance(value, int) and value > 0 for value in sizes)
         ):
@@ -2407,10 +2579,18 @@ class MainWindow(QMainWindow):
             self.ai_tabs.setCurrentIndex(0)
         self._on_ai_tab_changed(self.ai_tabs.currentIndex())
 
+        right_tab = state.get("rightTab")
+        if isinstance(right_tab, int) and 0 <= right_tab <= len(GOOGLE_ORDER):
+            self.right_tabs.setCurrentIndex(right_tab)
+
     def _save_ui_state(self) -> None:
+        if self._restoring_ui:
+            return
         state = {
+            "layoutVersion": UI_STATE_LAYOUT_VERSION,
             "splitter": self.splitter.sizes(),
             "aiTab": self.ai_tabs.currentIndex(),
+            "rightTab": self.right_tabs.currentIndex(),
             "currentPath": str(self.current_path) if self.current_path else "",
         }
         try:
@@ -2533,6 +2713,30 @@ def dark_palette() -> QPalette:
     return palette
 
 
+def apply_dark_title_bar(window: QMainWindow) -> None:
+    """Ask Windows 10/11 to draw the native title bar dark.
+
+    This is cosmetic and entirely optional: any failure leaves the standard
+    title bar in place.  It keeps the window from having a bright white frame
+    around the dark UI.
+    """
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes  # noqa: PLC0415 - Windows only
+
+        hwnd = int(window.winId())
+        enabled = ctypes.c_int(1)
+        for attribute in (20, 19):  # DWMWA_USE_IMMERSIVE_DARK_MODE (new/old)
+            result = ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                hwnd, attribute, ctypes.byref(enabled), ctypes.sizeof(enabled)
+            )
+            if result == 0:
+                break
+    except Exception:  # noqa: BLE001 - purely cosmetic
+        logging.getLogger(__name__).debug("ダークタイトルバーを適用できませんでした")
+
+
 def main() -> int:
     configure_logging()
     log = logging.getLogger("ai-office-workspace")
@@ -2587,6 +2791,7 @@ def main() -> int:
         return 1
 
     window.show()
+    apply_dark_title_bar(window)
     exit_code = app.exec()
 
     # Destroy the window (and therefore its pages) before the profiles, which

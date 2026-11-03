@@ -20,12 +20,71 @@ const DEFAULT_SHEET: Sheet = { name: 'Sheet1' };
 const SpreadsheetEditor = forwardRef<SpreadsheetHandle, SpreadsheetEditorProps>(
   function SpreadsheetEditor({ initialSheets, onChange }, ref) {
     const workbookRef = useRef<WorkbookInstance | null>(null);
+    const hostRef = useRef<HTMLDivElement | null>(null);
+    /** True while the OS IME is composing Japanese (or another language). */
+    const composingRef = useRef(false);
+    const compositionTargetRef = useRef<EventTarget | null>(null);
     const [sheetData, setSheetData] = useState<Sheet[]>(() =>
       initialSheets && initialSheets.length ? initialSheets : [DEFAULT_SHEET],
     );
     const [revision, setRevision] = useState(0);
     /** Sheet that should be active once the remounted workbook is ready. */
     const pendingSheetRef = useRef<string | null>(null);
+
+    /**
+     * FortuneSheet rewrites the contenteditable's innerHTML on every input
+     * event to keep formula highlighting in sync.  During IME composition that
+     * destroys the in-progress conversion, so Japanese input never appeared.
+     * Suppress the library's handlers while composing and replay one input
+     * event once the IME commits the text.
+     */
+    useEffect(() => {
+      const host = hostRef.current;
+      if (!host) {
+        return undefined;
+      }
+
+      const onCompositionStart = (event: CompositionEvent) => {
+        composingRef.current = true;
+        compositionTargetRef.current = event.target;
+      };
+
+      const onCompositionEnd = () => {
+        composingRef.current = false;
+        const target = compositionTargetRef.current;
+        compositionTargetRef.current = null;
+        if (!target) {
+          return;
+        }
+        window.setTimeout(() => {
+          target.dispatchEvent(
+            new InputEvent('input', { bubbles: true, composed: true }),
+          );
+        }, 0);
+      };
+
+      const swallowWhileComposing = (event: Event) => {
+        const composing =
+          composingRef.current || (event as InputEvent).isComposing === true;
+        if (composing) {
+          // React delegates onInput/onKeyDown at #root; stopping the bubble
+          // here keeps FortuneSheet from touching the composition buffer.
+          event.stopPropagation();
+        }
+      };
+
+      host.addEventListener('compositionstart', onCompositionStart as EventListener, true);
+      host.addEventListener('compositionend', onCompositionEnd as EventListener, true);
+      host.addEventListener('input', swallowWhileComposing, false);
+      host.addEventListener('keydown', swallowWhileComposing, false);
+
+      return () => {
+        host.removeEventListener('compositionstart', onCompositionStart as EventListener, true);
+        host.removeEventListener('compositionend', onCompositionEnd as EventListener, true);
+        host.removeEventListener('input', swallowWhileComposing, false);
+        host.removeEventListener('keydown', swallowWhileComposing, false);
+      };
+    }, []);
 
     const activate = useCallback((sheetId: string): boolean => {
       const workbook = workbookRef.current;
@@ -81,7 +140,7 @@ const SpreadsheetEditor = forwardRef<SpreadsheetHandle, SpreadsheetEditorProps>(
     }, [onChange]);
 
     return (
-      <div className="sheet-host">
+      <div className="sheet-host" ref={hostRef}>
         <Workbook
           key={revision}
           ref={workbookRef}

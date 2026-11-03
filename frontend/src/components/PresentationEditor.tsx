@@ -7,9 +7,7 @@ import {
   useState,
 } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
-import Reveal from 'reveal.js';
 import type { RevealApi, RevealConfig } from 'reveal.js';
-import 'reveal.js/reveal.css';
 import type { PresentationHandle, SlideData, SlideElement, SlideLayout } from '../types';
 import {
   DEFAULT_SLIDE_BACKGROUND,
@@ -66,24 +64,31 @@ function PresentationOverlay({ slides, startIndex, onClose }: PresentationOverla
     let deck: RevealApi | null = null;
     let disposed = false;
 
-    try {
-      deck = new Reveal(element, config);
-      deck
-        .initialize()
-        .then(() => {
-          if (!disposed && deck) {
-            const target = Math.min(Math.max(startIndex, 0), Math.max(slides.length - 1, 0));
-            deck.slide(target, 0);
-          }
-        })
-        .catch((reason: unknown) => {
-          if (!disposed) {
-            setError(reason instanceof Error ? reason.message : String(reason));
-          }
-        });
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
-    }
+    // Reveal.js is only needed when a slide show actually starts.  Loading it
+    // on demand keeps the editor's initial bundle small.
+    const start = async () => {
+      try {
+        const [{ default: Reveal }] = await Promise.all([
+          import('reveal.js'),
+          import('reveal.js/reveal.css'),
+        ]);
+        if (disposed) {
+          return;
+        }
+        deck = new Reveal(element, config);
+        await deck.initialize();
+        if (!disposed && deck) {
+          const target = Math.min(Math.max(startIndex, 0), Math.max(slides.length - 1, 0));
+          deck.slide(target, 0);
+        }
+      } catch (reason) {
+        if (!disposed) {
+          setError(reason instanceof Error ? reason.message : String(reason));
+        }
+      }
+    };
+
+    void start();
 
     return () => {
       disposed = true;

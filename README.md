@@ -1,9 +1,13 @@
 # AI Office Workspace
 
-左側に ChatGPT / Claude / DeepSeek / Qwen と Google Docs / Sheets / Slides の公式 Web サイトを、
-右側に Excel / Word / PowerPoint 風の
-エディタを並べた Windows 向けデスクトップアプリです。AI の回答を取得し、そのまま
-表計算・文書・スライドへ変換して編集できます。
+左側に ChatGPT / Claude / DeepSeek / Qwen の公式 Web サイトを、右側に Excel / Word /
+PowerPoint 風のエディタと Google Docs / Sheets / Slides の公式 Web サイトを並べた
+Windows 向けデスクトップアプリです。AI の回答を取得し、そのまま表計算・文書・スライドへ
+変換して編集できます。
+
+ウィンドウの既定の幅は **AI 3 : Office 7** です。AI 側はスマートフォンを少し長くした
+程度の幅に抑え、ローカル Office 側を主役にしています。AI と Office の境界はドラッグで
+変更でき、比率は次回起動時に復元されます。
 
 - GUI: Python 3.10+ / PySide6（Qt WebEngine）
 - エディタ: React + TypeScript + Vite
@@ -17,10 +21,13 @@
 
 ## Google ファイルの埋め込み
 
-左ペインの **Google Docs / Google Sheets / Google Slides** タブでは、各公式サイトを
-WebEngine内の独立タブとしてそのまま開きます。Googleアカウントでログインすれば、Google側の
-通常の編集画面を使用できます。エディタ上部の **Google ファイル** は、共有URLを一時的に
-iframe表示する補助導線です。
+右ペイン（ローカル Office 側）の **Google Docs / Google Sheets / Google Slides** タブでは、
+各公式サイトを WebEngine 内の独立ビューとしてそのまま開きます。Google アカウントで
+ログインすれば、Google 側の通常の編集画面を使用できます。Office タブに戻ればローカルの
+Excel / Word / Slide 編集画面に切り替わり、内容はそのまま保持されます。エディタ上部の
+**Google URL** は、共有 URL を一時的に iframe 表示する補助導線です。
+
+Google の各ビューは初回にタブを開いたときだけ生成されます（起動時は読み込みません）。
 
 - Google 側のログイン、共有権限、`X-Frame-Options` / CSP によりiframe表示できないファイルがあります。
 - OAuth や Google API のトークンは扱わないため、Google 側で編集した内容を自動的に
@@ -145,14 +152,14 @@ site\
 ```
 
 ```text
-https://github.com/yumedebug/office/releases/download/v1.0.3/AI-Office-Workspace-Setup.exe
+https://github.com/yumedebug/office/releases/download/v1.0.4/AI-Office-Workspace-Setup.exe
 ```
 
 - 配布物は **setup.exe 1 ファイル**です。利用者はダウンロードして実行するだけです。
 - Cloudflare Pages は 1 ファイル **25 MiB** までなので、約 230 MB の setup.exe は
   ページと同じ場所には置けません。**デプロイするのは `site\index.html` だけ**にします
   （`site\*.zip` は `.gitignore` 済みなので、フォルダごとデプロイしても exe / zip は上がりません）。
-- バージョンを上げたら、Releases のタグと `index.html` の href（`/v1.0.3/` の部分）を
+- バージョンを上げたら、Releases のタグと `index.html` の href（`/v1.0.4/` の部分）を
   揃えてください。
 - 手渡し用の zip が欲しい場合だけ、次のコマンドで作れます（サイトからは参照しません）。
 

@@ -595,14 +595,13 @@ export default function App() {
         </div>
         <div className="app-header-meta">
           <button type="button" className="tb-button" onClick={() => setGooglePanelOpen(true)}>
-            Google ファイル
+            Google URL
           </button>
           {bridgeState === 'standalone' ? (
             <span className="badge muted" title="Qt の QWebChannel に接続されていません">
               Python 未接続
             </span>
           ) : null}
-          <span className="badge">{mode === 'spreadsheet' ? 'Excel' : mode === 'document' ? 'Word' : 'Slide'}</span>
         </div>
       </header>
 

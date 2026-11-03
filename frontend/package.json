@@ -1,7 +1,7 @@
 {
   "name": "ai-office-workspace-frontend",
   "private": true,
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Office editor frontend for AI Office Workspace (FortuneSheet / Tiptap / Reveal.js)",
   "type": "module",
   "scripts": {
