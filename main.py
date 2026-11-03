@@ -502,16 +502,16 @@ def load_config() -> tuple[dict[str, Any], list[str]]:
     if isinstance(sites, dict):
         for name in AI_ORDER:
             url = sites.get(name)
-            # Keep existing installations working after the GLM tab was
-            # renamed to Claude.  Explicit Claude configuration always wins.
-            if name == "Claude" and url is None:
-                url = sites.get("GLM")
+            # The old GLM URL must never be reused for Claude. Existing
+            # installations keep their browser profile, but Claude always
+            # points at the official Claude site.
             if isinstance(url, str) and url.startswith(("http://", "https://")):
                 config["ai_sites"][name] = url.strip()
             elif url is not None:
                 warnings.append(
                     f"config.json の ai_sites.{name} が URL ではないため既定値を用います。"
                 )
+        config["ai_sites"]["Claude"] = DEFAULT_CONFIG["ai_sites"]["Claude"]
 
     # Only the four supported sites are used; other names are ignored.
     config["ai_sites"] = {name: config["ai_sites"][name] for name in AI_ORDER}

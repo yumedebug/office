@@ -12,7 +12,8 @@
   - スライド: Reveal.js `6.0.2`（編集 UI は独自実装）
 - 連携: QWebChannel（`officeBridge`）+ `runJavaScript()`
 - API キー不要。各 AI には利用者自身がログインします。Claude は `https://claude.ai/` を使用し、
-  旧 `config.json` の `ai_sites.GLM` と旧 `profiles\glm` も初回移行時に互換利用します。
+  旧 `profiles\glm` はログイン状態の互換用として再利用できますが、URLは常に
+  `https://claude.ai/` を使用します。
 
 ## Google ファイルの埋め込み
 
@@ -144,14 +145,14 @@ site\
 ```
 
 ```text
-https://github.com/yumedebug/office/releases/download/v1.0.2/AI-Office-Workspace-Setup.exe
+https://github.com/yumedebug/office/releases/download/v1.0.3/AI-Office-Workspace-Setup.exe
 ```
 
 - 配布物は **setup.exe 1 ファイル**です。利用者はダウンロードして実行するだけです。
 - Cloudflare Pages は 1 ファイル **25 MiB** までなので、約 230 MB の setup.exe は
   ページと同じ場所には置けません。**デプロイするのは `site\index.html` だけ**にします
   （`site\*.zip` は `.gitignore` 済みなので、フォルダごとデプロイしても exe / zip は上がりません）。
-- バージョンを上げたら、Releases のタグと `index.html` の href（`/v1.0.2/` の部分）を
+- バージョンを上げたら、Releases のタグと `index.html` の href（`/v1.0.3/` の部分）を
   揃えてください。
 - 手渡し用の zip が欲しい場合だけ、次のコマンドで作れます（サイトからは参照しません）。
 
