@@ -30,6 +30,8 @@ jobs:
 
       - name: Build setup.exe
         shell: cmd
+        env:
+          PYTHON: python
         run: packaging\build.bat
 
       - name: Verify setup.exe
